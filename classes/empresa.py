@@ -1,5 +1,5 @@
 from helper import read_database, save_to_database
-#from models.gerente import Gerente
+from classes.gerente import Gerente
 
 class Empresa():
 
@@ -12,36 +12,40 @@ class Empresa():
     def format_name_dunde(name):
         format = name.lower().split()
         return  "_".join(format) 
-    
-    contratados = []
 
     def __init__(self, nome:str, cnpj:str):
+
         self.nome = self.format_name(nome)
         self.cnpj = cnpj
+        self.contratados = []
 
     def __len__(self):
-        return len(Empresa.contratados)
+        return len(self.contratados)
     
     def contratar_funcionario(self, funcionario):
 
-        for funcionarios in Empresa.contratados:
+        for funcionarios in self.contratados:
             if funcionarios.get("cpf") == funcionario.cpf:
                 return "Funcionário com esse CPF já foi contratado"
 
         name = self.format_name_dunde(funcionario.nome)
-        email = f'{name}@{self.nome.lower()}.gmail.com'
+        email = f'{name}@{self.format_name_dunde(self.nome)}.gmail.com'
         empresa = self.nome
 
-        Empresa.contratados.append(({**vars(funcionario), "email":email, "empresa":empresa}))
-    
-    def gerar_holerite(self, cadastrar_usuario):
+        funcionario.empresa = empresa
+        funcionario.email = email
 
-        nome = self.format_name_dunde(cadastrar_usuario.nome)
+        self.contratados.append(vars(funcionario))
+        return "Funcionário contratado!"
+    
+    def gerar_holerite(self, funcionario):
+
+        nome = self.format_name_dunde(funcionario.nome)
         empresa = f"_{self.format_name_dunde(self.nome)}_"
 
-        for funcionarios in Empresa.contratados:
-            if funcionarios.get("cpf") == cadastrar_usuario.cpf:
-                save_to_database(vars(cadastrar_usuario), empresa, nome)
+        for funcionarios in self.contratados:
+            if funcionarios.get("cpf") == funcionario.cpf:
+                save_to_database(vars(funcionario), empresa, nome)
                 return True
         
         return False
@@ -54,7 +58,8 @@ class Empresa():
         
         empresa_name = "_".join(format_empresa)
         funcionario_name = "_".join(format_funcionario)
-        path = f"_{empresa_name}_/{funcionario_name}"
+
+        path = f"empresas/_{empresa_name}_/{funcionario_name}"
 
         try:
 
@@ -65,38 +70,53 @@ class Empresa():
 
             return 'Holerite não gerado!'
     
-    def demissao(self, empregado):
+    def remove_funcionario(self, funcionario):
 
-        for user in Empresa.contratados:
+        for gerente in self.contratados:
+            
+            num = 0
 
-            if user.get("cpf") == empregado.cpf:
+            try:
 
-                try:
-
-                    if type(user.get("funcionarios") == []):
-                        user.get("funcionarios").clear()
-                        Empresa.contratados.remove(user)       
-                        return "Gerente demitido!"
-
-                except:
+                while num <= len(gerente.get("funcionarios")[num])-1:
                     
-                    Empresa.contratados.remove(user)       
-                    return "Funcionario demitido!"  
+                    if gerente.get("funcionarios")[num].get("cpf") == funcionario.cpf:
+                        gerente.get("funcionarios").remove(gerente.get("funcionarios")[num])
+
+                    num +=1
+
+            except:
+                ...
+
+    def demissao(self, funcionario):
+
+        for funcionarios in self.contratados:
+
+            if funcionarios.get("cpf") == funcionario.cpf:
+
+                if funcionario.funcao == "Gerente":
+                    funcionario.funcionarios.clear()
+                    self.contratados.remove(funcionarios)       
+                    return "Gerente demitido!"
+
+                else:
+                    self.remove_funcionario(funcionario)
+                    self.contratados.remove(funcionarios)       
+                    return "Funcionario demitido!"
                 
         return "Não consta esse CPF na empresa"
     
-""" def promocao(self, funcionario):
+    def promocao(self, funcionario):
 
-        for user in Empresa.contratados:
-            
-            try:
-                
-                if type(user.get("funcionarios")) == []:
-                    return False
-            except:
+        if funcionario.funcao == "Gerente":
+            return False
 
-                if user.get("cpf") == funcionario.cpf:
-                    Empresa.contratados.remove(user)
-                    promo = Gerente(**vars(funcionario))
-                    Empresa.contratados.append(promo)
-"""
+        for funcionarios in self.contratados:
+
+            if funcionarios.get("cpf") == funcionario.cpf:
+                self.demissao(funcionario)
+                promo = Gerente(funcionario.nome, funcionario.cpf, funcionario.salario)
+                self.contratar_funcionario(promo)
+                return promo
+        
+        return False
